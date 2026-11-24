@@ -11,11 +11,22 @@ export type SyncDelta = {
   ts: number;
 };
 
+export type RemedialItem = {
+  studentId: string;
+  studentName: string;
+  grade: number;
+  subject: Subject;
+  mastery: number;
+  tip: string;
+  questionIds: string[];
+};
+
 const KEYS = {
   mastery: "shiksha_mastery",
   queue: "shiksha_queue",
   offline: "shiksha_offline",
   lang: "shiksha_lang",
+  pack: "shiksha_pack",
 } as const;
 
 const DB_NAME = "shikshasync";
@@ -202,10 +213,18 @@ export function setLang(lang: Lang): void {
   writeString(KEYS.lang, lang);
 }
 
+export function getRemedialPack(): RemedialItem[] {
+  return readJson<RemedialItem[]>(KEYS.pack, []);
+}
+
+export function saveRemedialPack(pack: RemedialItem[]): void {
+  writeJson(KEYS.pack, pack);
+}
+
 export async function hydrateStorage(): Promise<void> {
   if (!hasWindow()) return;
   try {
-    for (const key of [KEYS.mastery, KEYS.queue]) {
+    for (const key of [KEYS.mastery, KEYS.queue, KEYS.pack]) {
       if (!window.localStorage.getItem(key)) {
         const val = await idbGet<unknown>(key);
         if (val !== null) {
