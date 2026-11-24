@@ -1,2 +1,8 @@
 # ShikshaSync
-ShikshaSync is an offline-first adaptive learning PWA for rural multi-grade schools. An on-device mastery engine adapts math and reading drills with zero internet using cached ElevenLabs regional voice hints, syncing tiny (&lt;500 KB) remedial packs via AWS when online alongside a multi-grade teacher heatmap..
+
+Offline-first adaptive learning PWA for rural multi-grade schools.
+Runs adaptive math and reading drills locally and syncs mastery deltas when online.
+
+```bash
+npm install && npm run dev
+```
