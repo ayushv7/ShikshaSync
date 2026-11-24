@@ -41,9 +41,17 @@ export function pickQuestion(
   pool: Question[],
   mastery: MasteryMap,
   seenIds: string[],
-  subject?: Subject
+  subject?: Subject,
+  priorityIds: string[] = []
 ): Question | null {
   if (pool.length === 0) return null;
+
+  if (!subject && priorityIds.length > 0) {
+    const priorityMatch = pool.find(
+      (q) => priorityIds.includes(q.id) && !seenIds.includes(q.id)
+    );
+    if (priorityMatch) return priorityMatch;
+  }
 
   const unseen = pool.filter((q) => !seenIds.includes(q.id));
   const weaker: Subject = mastery.math <= mastery.reading ? "math" : "reading";

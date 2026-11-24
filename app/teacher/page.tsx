@@ -6,13 +6,19 @@ import type { MasteryMap } from "@/lib/bkt";
 import { students } from "@/lib/data";
 import {
   clearSyncQueue,
+  defaultMasteryMap,
   getAllMastery,
-  getOffline,
+  getLastSync,
   getRemedialPack,
   getSyncQueue,
   hydrateStorage,
+  isEffectiveOffline,
+  resetDemoStorage,
+  saveLastSync,
   saveRemedialPack,
   setOffline,
+  watchConnectivity,
+  type LastSync,
   type RemedialItem,
   type SyncDelta,
 } from "@/lib/storage";
@@ -32,21 +38,14 @@ function heatCellClass(score: number): string {
   return "border-rose-200 bg-rose-100 text-rose-900";
 }
 
-function initialMasteryState(): Record<string, MasteryMap> {
-  const map: Record<string, MasteryMap> = {};
-  for (const student of students) {
-    map[student.id] = { ...student.initialMastery };
-  }
-  return map;
-}
-
 export default function TeacherPage() {
   const [isOffline, setIsOfflineState] = useState(false);
   const [mastery, setMastery] = useState<Record<string, MasteryMap>>(
-    initialMasteryState
+    defaultMasteryMap
   );
   const [syncQueue, setSyncQueue] = useState<SyncDelta[]>([]);
   const [remedialPack, setRemedialPack] = useState<RemedialItem[]>([]);
+  const [lastSync, setLastSync] = useState<LastSync | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [status, setStatus] = useState<SyncStatus | null>(null);
 
@@ -54,13 +53,19 @@ export default function TeacherPage() {
     let active = true;
     void hydrateStorage().then(() => {
       if (!active) return;
-      setIsOfflineState(getOffline());
+      setIsOfflineState(isEffectiveOffline());
       setMastery(getAllMastery());
       setSyncQueue(getSyncQueue());
       setRemedialPack(getRemedialPack());
+      setLastSync(getLastSync());
+    });
+
+    const unwatch = watchConnectivity((offline) => {
+      if (active) setIsOfflineState(offline);
     });
     return () => {
       active = false;
+      unwatch();
     };
   }, []);
 
@@ -71,8 +76,17 @@ export default function TeacherPage() {
     setStatus(null);
   }
 
+  function handleResetDemo() {
+    resetDemoStorage();
+    setMastery(defaultMasteryMap());
+    setSyncQueue([]);
+    setRemedialPack([]);
+    setLastSync(null);
+    setStatus({ ok: true, message: "Demo state reset to initial mastery." });
+  }
+
   async function handleSync() {
-    if (isOffline) {
+    if (isOffline || !window.navigator.onLine) {
       setStatus({
         ok: false,
         message: "Offline Mode is active. Switch to Online Mode to sync.",
@@ -98,16 +112,25 @@ export default function TeacherPage() {
 
       const data = (await res.json()) as {
         syncedCount: number;
+        syncedAt: number;
         payloadBytes: number;
         source: string;
         dynamoSynced: boolean;
         remedialPack: RemedialItem[];
       };
 
+      const syncInfo: LastSync = {
+        at: data.syncedAt,
+        source: data.source,
+        bytes: data.payloadBytes,
+      };
+
       clearSyncQueue();
       setSyncQueue([]);
       setRemedialPack(data.remedialPack);
       saveRemedialPack(data.remedialPack);
+      setLastSync(syncInfo);
+      saveLastSync(syncInfo);
 
       const kb = (data.payloadBytes / 1024).toFixed(2);
       setStatus({
@@ -132,6 +155,8 @@ export default function TeacherPage() {
           </h1>
           <p className="text-sm text-slate-600">
             Multi-grade mastery heatmap · Pending deltas: {syncQueue.length}
+            {lastSync &&
+              ` · Last sync: ${(lastSync.bytes / 1024).toFixed(2)} KB (${lastSync.source})`}
           </p>
         </div>
 
@@ -156,6 +181,14 @@ export default function TeacherPage() {
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
           >
             {isSyncing ? "Syncing..." : "Sync Now"}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleResetDemo}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Reset Demo
           </button>
         </div>
       </div>
@@ -277,6 +310,30 @@ export default function TeacherPage() {
           </table>
         </div>
       </div>
+
+      {syncQueue.length > 0 && (
+        <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="text-base font-semibold text-slate-900">
+            Pending Sync Queue ({syncQueue.length})
+          </h2>
+          <div className="divide-y divide-slate-100 text-sm">
+            {syncQueue.slice(-6).map((delta) => (
+              <div
+                key={delta.id}
+                className="flex flex-wrap items-center justify-between gap-2 py-2"
+              >
+                <span className="font-medium text-slate-800">
+                  {delta.studentId} · {delta.subject} ({delta.questionId})
+                </span>
+                <span className="text-xs text-slate-600">
+                  {delta.correct ? "Correct" : "Wrong"} · Mastery{" "}
+                  {Math.round(delta.mastery * 100)}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {remedialPack.length > 0 && (
         <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">

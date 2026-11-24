@@ -123,6 +123,50 @@ export const questions: Question[] = [
     },
   },
   {
+    id: "m5",
+    subject: "math",
+    grade: 4,
+    level: 1,
+    prompt: {
+      en: "What is 100 - 37?",
+      kn: "100 - 37 ಎಷ್ಟು?",
+      hi: "100 - 37 कितना होता है?",
+    },
+    options: {
+      en: ["53", "63", "67", "73"],
+      kn: ["53", "63", "67", "73"],
+      hi: ["53", "63", "67", "73"],
+    },
+    answerIdx: 1,
+    hint: {
+      en: "Subtract 30 from 100 to get 70, then subtract 7.",
+      kn: "100 ರಲ್ಲಿ 30 ಕಳೆದರೆ 70 ಬರುತ್ತದೆ, ನಂತರ 7 ಕಳೆಯಿರಿ.",
+      hi: "100 में से 30 घटाएं तो 70 मिलेगा, फिर 7 और घटाएं।",
+    },
+  },
+  {
+    id: "m6",
+    subject: "math",
+    grade: 5,
+    level: 2,
+    prompt: {
+      en: "A rectangular garden is 8 m long and 5 m wide. What is its perimeter?",
+      kn: "ಒಂದು ಆಯತಾಕಾರದ ತೋಟವು 8 ಮೀ ಉದ್ದ ಮತ್ತು 5 ಮೀ ಅಗಲವಿದೆ. ಅದರ ಸುತ್ತಳತೆ ಎಷ್ಟು?",
+      hi: "एक आयताकार बगीचा 8 मीटर लंबा और 5 मीटर चौड़ा है। इसका परिमाप क्या है?",
+    },
+    options: {
+      en: ["13 m", "26 m", "40 m", "18 m"],
+      kn: ["13 ಮೀ", "26 ಮೀ", "40 ಮೀ", "18 ಮೀ"],
+      hi: ["13 मीटर", "26 मीटर", "40 मीटर", "18 मीटर"],
+    },
+    answerIdx: 1,
+    hint: {
+      en: "Add all four sides: 8 + 5 + 8 + 5.",
+      kn: "ನಾಲ್ಕು ಬದಿಗಳನ್ನು ಕೂಡಿ: 8 + 5 + 8 + 5.",
+      hi: "चारों भुजाओं को जोड़ें: 8 + 5 + 8 + 5।",
+    },
+  },
+  {
     id: "r1",
     subject: "reading",
     grade: 3,
@@ -208,6 +252,50 @@ export const questions: Question[] = [
       en: "Look at what the sentence highlights: studying after sunset and no smoke.",
       kn: "ವಾಕ್ಯದಲ್ಲಿರುವ ಎರಡು ಅಂಶಗಳನ್ನು ನೋಡಿ: ಸೂರ್ಯಾಸ್ತದ ನಂತರ ಓದುವುದು ಮತ್ತು ಹೊಗೆಯಿಲ್ಲದಿರುವುದು.",
       hi: "वाक्य की दो मुख्य बातों पर ध्यान दें: सूरज ढलने के बाद पढ़ाई और बिना धुएं के।",
+    },
+  },
+  {
+    id: "r5",
+    subject: "reading",
+    grade: 3,
+    level: 2,
+    prompt: {
+      en: "Meena packed her slate and pencil before the school bell rang. Where was Meena going?",
+      kn: "ಶಾಲೆಯ ಗಂಟೆ ಬಾರಿಸುವ ಮೊದಲು ಮೀನಾ ತನ್ನ ಸ್ಲೇಟ್ ಮತ್ತು ಪೆನ್ಸಿಲ್ ತೆಗೆದುಕೊಂಡಳು. ಮೀನಾ ಎಲ್ಲಿಗೆ ಹೋಗುತ್ತಿದ್ದಳು?",
+      hi: "स्कूल की घंटी बजने से पहले मीना ने अपनी स्लेट और पेंसिल रख ली। मीना कहाँ जा रही थी?",
+    },
+    options: {
+      en: ["To the market", "To school", "To the river", "To sleep"],
+      kn: ["ಮಾರುಕಟ್ಟೆಗೆ", "ಶಾಲೆಗೆ", "ನದಿಗೆ", "ನಿದ್ರೆಗೆ"],
+      hi: ["बाजार", "स्कूल", "नदी", "सोने"],
+    },
+    answerIdx: 1,
+    hint: {
+      en: "Look for clues in the sentence: slate, pencil, and school bell.",
+      kn: "ವಾಕ್ಯದಲ್ಲಿರುವ ಸುಳಿವುಗಳನ್ನು ನೋಡಿ: ಸ್ಲೇಟ್, ಪೆನ್ಸಿಲ್ ಮತ್ತು ಶಾಲೆಯ ಗಂಟೆ.",
+      hi: "वाक्य के संकेत देखें: स्लेट, पेंसिल और स्कूल की घंटी।",
+    },
+  },
+  {
+    id: "r6",
+    subject: "reading",
+    grade: 5,
+    level: 2,
+    prompt: {
+      en: "Rainwater harvesting collects roof water into tanks for dry months. Why is it useful?",
+      kn: "ಮಳೆನೀರು ಕೊಯ್ಲು ಬೇಸಿಗೆಗಾಗಿ ಮೇಲ್ಛಾವಣಿಯ ನೀರನ್ನು ತೊಟ್ಟಿಗಳಲ್ಲಿ ಸಂಗ್ರಹಿಸುತ್ತದೆ. ಇದು ಏಕೆ ಉಪಯುಕ್ತ?",
+      hi: "वर्षा जल संचयन सूखे महीनों के लिए छत के पानी को टंकी में जमा करता है। यह क्यों उपयोगी है?",
+    },
+    options: {
+      en: ["It saves water for later", "It heats the roof", "It dries the soil", "It makes rain louder"],
+      kn: ["ನಂತರದ ಬಳಕೆಗಾಗಿ ನೀರು ಉಳಿಸುತ್ತದೆ", "ಮೇಲ್ಛಾವಣಿಯನ್ನು ಬಿಸಿ ಮಾಡುತ್ತದೆ", "ಮಣ್ಣನ್ನು ಒಣಗಿಸುತ್ತದೆ", "ಮಳೆಯ ಶಬ್ದ ಹೆಚ್ಚಿಸುತ್ತದೆ"],
+      hi: ["बाद के लिए पानी बचाता है", "छत को गर्म करता है", "मिट्टी सुखाता है", "बारिश की आवाज बढ़ाता है"],
+    },
+    answerIdx: 0,
+    hint: {
+      en: "Think about why tanks store water before the dry months arrive.",
+      kn: "ಬೇಸಿಗೆ ಬರುವ ಮೊದಲು ತೊಟ್ಟಿಗಳಲ್ಲಿ ನೀರನ್ನು ಏಕೆ ಸಂಗ್ರಹಿಸುತ್ತಾರೆ ಎಂದು ಯೋಚಿಸಿ.",
+      hi: "सोचें कि सूखे महीने आने से पहले टंकी में पानी क्यों जमा किया जाता है।",
     },
   },
 ];

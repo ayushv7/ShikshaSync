@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import SwRegister from "./SwRegister";
 
 export const metadata: Metadata = {
   title: "ShikshaSync",
   description: "Offline-first adaptive learning for rural multi-grade schools",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -15,6 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900">
+        <SwRegister />
         <header className="border-b border-slate-200 bg-white">
           <nav className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
             <Link

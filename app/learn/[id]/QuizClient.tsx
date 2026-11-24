@@ -20,13 +20,16 @@ import {
 import {
   enqueueDelta,
   getLang,
-  getOffline,
+  getRemedialPack,
   getStudentMastery,
   getSyncQueue,
   hydrateStorage,
+  isEffectiveOffline,
   saveStudentMastery,
   setLang,
   setOffline,
+  watchConnectivity,
+  type RemedialItem,
   type SyncDelta,
 } from "@/lib/storage";
 
@@ -44,8 +47,7 @@ function speakLocal(text: string, lang: Lang): boolean {
     const synth = window.speechSynthesis;
     synth.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    const locale = SPEECH_LOCALE[lang];
-    utterance.lang = locale;
+    utterance.lang = SPEECH_LOCALE[lang];
     const match = synth
       .getVoices()
       .find((v) => v.lang.toLowerCase().startsWith(lang));
@@ -69,12 +71,11 @@ export default function QuizClient({ studentId }: { studentId: string }) {
     student ? { ...student.initialMastery } : { ...DEFAULT_MASTERY }
   );
   const [syncQueue, setSyncQueue] = useState<SyncDelta[]>([]);
+  const [remedial, setRemedial] = useState<RemedialItem | null>(null);
   const [subject, setSubject] = useState<Subject | undefined>(undefined);
   const [seenIds, setSeenIds] = useState<string[]>([]);
   const [question, setQuestion] = useState<Question | null>(() =>
-    student
-      ? pickQuestion(questions, student.initialMastery, [])
-      : null
+    student ? pickQuestion(questions, student.initialMastery, []) : null
   );
   const [qIdx, setQIdx] = useState(0);
   const [chosenIdx, setChosenIdx] = useState<number | null>(null);
@@ -88,7 +89,7 @@ export default function QuizClient({ studentId }: { studentId: string }) {
     let active = true;
     void hydrateStorage().then(() => {
       if (!active) return;
-      setIsOfflineState(getOffline());
+      setIsOfflineState(isEffectiveOffline());
       const resolvedLang: Lang =
         queryLang === "kn" || queryLang === "hi" || queryLang === "en"
           ? queryLang
@@ -99,13 +100,30 @@ export default function QuizClient({ studentId }: { studentId: string }) {
       }
       if (student) {
         const savedMastery = getStudentMastery(student.id);
+        const packItem =
+          getRemedialPack().find((item) => item.studentId === student.id) ??
+          null;
         setMastery(savedMastery);
-        setQuestion(pickQuestion(questions, savedMastery, []));
+        setRemedial(packItem);
+        setQuestion(
+          pickQuestion(
+            questions,
+            savedMastery,
+            [],
+            undefined,
+            packItem?.questionIds ?? []
+          )
+        );
       }
       setSyncQueue(getSyncQueue());
     });
+
+    const unwatch = watchConnectivity((offline) => {
+      if (active) setIsOfflineState(offline);
+    });
     return () => {
       active = false;
+      unwatch();
     };
   }, [queryLang, student]);
 
@@ -142,7 +160,15 @@ export default function QuizClient({ studentId }: { studentId: string }) {
     setChosenIdx(null);
     setShowHint(false);
     setVoiceNote("");
-    setQuestion(pickQuestion(questions, mastery, seenIds, nextSubject));
+    setQuestion(
+      pickQuestion(
+        questions,
+        mastery,
+        seenIds,
+        nextSubject,
+        remedial?.questionIds ?? []
+      )
+    );
   }
 
   function handleAnswer(idx: number) {
@@ -178,7 +204,15 @@ export default function QuizClient({ studentId }: { studentId: string }) {
     setShowHint(false);
     setVoiceNote("");
     setQIdx((prev) => prev + 1);
-    setQuestion(pickQuestion(questions, mastery, nextSeen, subject));
+    setQuestion(
+      pickQuestion(
+        questions,
+        mastery,
+        nextSeen,
+        subject,
+        remedial?.questionIds ?? []
+      )
+    );
   }
 
   async function playAudioBlob(blob: Blob): Promise<boolean> {
@@ -215,7 +249,7 @@ export default function QuizClient({ studentId }: { studentId: string }) {
         }
       }
 
-      if (!isOffline) {
+      if (!isOffline && window.navigator.onLine) {
         const res = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -253,6 +287,9 @@ export default function QuizClient({ studentId }: { studentId: string }) {
 
   const mathPct = Math.round(mastery.math * 100);
   const readingPct = Math.round(mastery.reading * 100);
+  const isRemedialQ = Boolean(
+    question && remedial?.questionIds.includes(question.id)
+  );
 
   return (
     <div className="space-y-6">
@@ -272,6 +309,17 @@ export default function QuizClient({ studentId }: { studentId: string }) {
           </div>
           <p className="mt-1 text-sm text-slate-600">
             Pending sync: {syncQueue.length}
+            {syncQueue.length > 0 && (
+              <>
+                {" · "}
+                <Link
+                  href="/teacher"
+                  className="font-medium text-emerald-700 hover:underline"
+                >
+                  Sync on Teacher view
+                </Link>
+              </>
+            )}
           </p>
         </div>
 
@@ -288,6 +336,15 @@ export default function QuizClient({ studentId }: { studentId: string }) {
           {isOffline ? "Offline Mode" : "Online Mode"}
         </button>
       </div>
+
+      {remedial && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="font-semibold">
+            Synced Remedial Focus ({remedial.subject})
+          </div>
+          <p className="mt-1">{remedial.tip}</p>
+        </div>
+      )}
 
       <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
         <div>
@@ -376,9 +433,17 @@ export default function QuizClient({ studentId }: { studentId: string }) {
       {question && (
         <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-            <span>
-              Question {qIdx + 1} · {question.subject} · Level {question.level}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span>
+                Question {qIdx + 1} · {question.subject} · Level{" "}
+                {question.level}
+              </span>
+              {isRemedialQ && (
+                <span className="rounded bg-amber-100 px-2 py-0.5 text-[11px] font-semibold normal-case tracking-normal text-amber-900">
+                  Remedial drill
+                </span>
+              )}
+            </div>
             <button
               type="button"
               onClick={handleListen}
