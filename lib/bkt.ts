@@ -46,14 +46,19 @@ export function pickQuestion(
   if (pool.length === 0) return null;
 
   const unseen = pool.filter((q) => !seenIds.includes(q.id));
-  const activePool = unseen.length > 0 ? unseen : pool;
-
+  const weaker: Subject = mastery.math <= mastery.reading ? "math" : "reading";
   const focus: Subject =
-    subject ?? (mastery.math <= mastery.reading ? "math" : "reading");
-  const subjectPool = activePool.filter((q) => q.subject === focus);
-  const candidates = subjectPool.length > 0 ? subjectPool : activePool;
+    subject ??
+    (unseen.some((q) => q.subject === weaker)
+      ? weaker
+      : unseen[0]?.subject ?? weaker);
 
-  const wantedLevel = targetLevel(mastery[candidates[0].subject]);
+  const subjectPool = pool.filter((q) => q.subject === focus);
+  const basePool = subjectPool.length > 0 ? subjectPool : pool;
+  const unseenSubject = basePool.filter((q) => !seenIds.includes(q.id));
+  const candidates = unseenSubject.length > 0 ? unseenSubject : basePool;
+
+  const wantedLevel = targetLevel(mastery[focus]);
   return [...candidates].sort(
     (a, b) => Math.abs(a.level - wantedLevel) - Math.abs(b.level - wantedLevel)
   )[0];

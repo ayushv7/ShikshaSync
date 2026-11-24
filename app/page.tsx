@@ -1,24 +1,42 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-
-const students = [
-  { id: "aarav", name: "Aarav", grade: 3 },
-  { id: "kavya", name: "Kavya", grade: 4 },
-  { id: "rohan", name: "Rohan", grade: 5 },
-  { id: "meera", name: "Meera", grade: 3 },
-];
-
-const langs = [
-  { code: "en", label: "English" },
-  { code: "kn", label: "Kannada" },
-  { code: "hi", label: "Hindi" },
-];
+import { useEffect, useState } from "react";
+import { langs, students, type Lang } from "@/lib/data";
+import {
+  getLang,
+  getOffline,
+  hydrateStorage,
+  setLang,
+  setOffline,
+} from "@/lib/storage";
 
 export default function HomePage() {
-  const [isOffline, setIsOffline] = useState(false);
-  const [lang, setLang] = useState("en");
+  const [isOffline, setIsOfflineState] = useState(false);
+  const [lang, setLangState] = useState<Lang>("en");
+
+  useEffect(() => {
+    let active = true;
+    void hydrateStorage().then(() => {
+      if (!active) return;
+      setIsOfflineState(getOffline());
+      setLangState(getLang());
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function toggleOffline() {
+    const next = !isOffline;
+    setIsOfflineState(next);
+    setOffline(next);
+  }
+
+  function selectLang(nextLang: Lang) {
+    setLangState(nextLang);
+    setLang(nextLang);
+  }
 
   return (
     <div className="space-y-8">
@@ -34,7 +52,7 @@ export default function HomePage() {
 
         <button
           type="button"
-          onClick={() => setIsOffline((prev) => !prev)}
+          onClick={toggleOffline}
           aria-pressed={isOffline}
           className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
             isOffline
@@ -52,7 +70,7 @@ export default function HomePage() {
           <button
             key={item.code}
             type="button"
-            onClick={() => setLang(item.code)}
+            onClick={() => selectLang(item.code)}
             aria-pressed={lang === item.code}
             className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
               lang === item.code
