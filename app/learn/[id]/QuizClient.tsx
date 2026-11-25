@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_MASTERY,
   pickQuestion,
@@ -27,7 +27,6 @@ import {
   isEffectiveOffline,
   saveStudentMastery,
   setLang,
-  setOffline,
   watchConnectivity,
   type RemedialItem,
   type SyncDelta,
@@ -39,26 +38,16 @@ const SPEECH_LOCALE: Record<Lang, string> = {
   hi: "hi-IN",
 };
 
-function speakLocal(text: string, lang: Lang): boolean {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-    return false;
-  }
-  try {
-    const synth = window.speechSynthesis;
-    synth.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = SPEECH_LOCALE[lang];
-    const match = synth
-      .getVoices()
-      .find((v) => v.lang.toLowerCase().startsWith(lang));
-    if (match) {
-      utterance.voice = match;
-    }
-    synth.speak(utterance);
-    return true;
-  } catch {
-    return false;
-  }
+const OPTION_KEYS = ["A", "B", "C", "D"];
+
+function masteryColor(score: number): string {
+  if (score >= 0.7) return "var(--status-ok)";
+  if (score >= 0.45) return "var(--status-warn)";
+  return "var(--status-err)";
+}
+
+function subjectLabel(subject: Subject): string {
+  return subject === "math" ? "Math" : "Reading";
 }
 
 export default function QuizClient({ studentId }: { studentId: string }) {
@@ -81,9 +70,30 @@ export default function QuizClient({ studentId }: { studentId: string }) {
   const [chosenIdx, setChosenIdx] = useState<number | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [voiceNote, setVoiceNote] = useState("");
-  const [isListening, setIsListening] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queryLang = searchParams.get("lang");
+
+  function stopVoice() {
+    if (playTimerRef.current) {
+      clearTimeout(playTimerRef.current);
+      playTimerRef.current = null;
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {
+        setIsPlaying(false);
+      }
+    }
+    setIsPlaying(false);
+  }
 
   useEffect(() => {
     let active = true;
@@ -124,38 +134,43 @@ export default function QuizClient({ studentId }: { studentId: string }) {
     return () => {
       active = false;
       unwatch();
+      if (playTimerRef.current) clearTimeout(playTimerRef.current);
+      if (audioRef.current) audioRef.current.pause();
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {
+          return;
+        }
+      }
     };
   }, [queryLang, student]);
 
   if (!student) {
     return (
-      <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6">
-        <h1 className="text-lg font-semibold text-slate-900">
+      <div className="mx-auto max-w-2xl space-y-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
+        <h1 className="font-heading text-lg font-semibold text-[var(--ink)]">
           Student not found
         </h1>
         <Link
           href="/"
-          className="inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
+          className="inline-flex min-h-[44px] items-center rounded-md bg-[var(--brand)] px-4 text-sm font-medium text-[var(--surface)] transition-all duration-150 ease-out hover:bg-[var(--brand-hover)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
         >
-          Back to Students
+          Back to students
         </Link>
       </div>
     );
   }
 
-  function toggleOffline() {
-    const next = !isOffline;
-    setIsOfflineState(next);
-    setOffline(next);
-  }
-
   function changeLang(nextLang: Lang) {
+    stopVoice();
     setLangState(nextLang);
     setLang(nextLang);
     setVoiceNote("");
   }
 
   function changeSubject(nextSubject: Subject | undefined) {
+    stopVoice();
     setSubject(nextSubject);
     setChosenIdx(null);
     setShowHint(false);
@@ -194,6 +209,7 @@ export default function QuizClient({ studentId }: { studentId: string }) {
 
   function handleNext() {
     if (!question) return;
+    stopVoice();
     const updatedSeen = seenIds.includes(question.id)
       ? seenIds
       : [...seenIds, question.id];
@@ -219,8 +235,59 @@ export default function QuizClient({ studentId }: { studentId: string }) {
     try {
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
-      audio.onended = () => URL.revokeObjectURL(url);
+      audioRef.current = audio;
+      const finish = () => {
+        URL.revokeObjectURL(url);
+        if (audioRef.current === audio) {
+          audioRef.current = null;
+        }
+        setIsPlaying(false);
+      };
+      audio.onended = finish;
+      audio.onerror = finish;
       await audio.play();
+      return true;
+    } catch {
+      setIsPlaying(false);
+      return false;
+    }
+  }
+
+  function speakLocal(text: string, activeLang: Lang): boolean {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      return false;
+    }
+    try {
+      const synth = window.speechSynthesis;
+      synth.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = SPEECH_LOCALE[activeLang];
+      const match = synth
+        .getVoices()
+        .find((v) => v.lang.toLowerCase().startsWith(activeLang));
+      if (match) {
+        utterance.voice = match;
+      }
+      const startedAt = Date.now();
+      const done = () => {
+        const delay = Math.max(0, 900 - (Date.now() - startedAt));
+        if (playTimerRef.current) {
+          clearTimeout(playTimerRef.current);
+          playTimerRef.current = null;
+        }
+        playTimerRef.current = setTimeout(() => {
+          playTimerRef.current = null;
+          setIsPlaying(false);
+        }, delay);
+      };
+      utterance.onend = done;
+      utterance.onerror = done;
+      synth.speak(utterance);
+      const fallbackMs = Math.min(4500, Math.max(1600, text.length * 55));
+      playTimerRef.current = setTimeout(() => {
+        playTimerRef.current = null;
+        setIsPlaying(false);
+      }, fallbackMs);
       return true;
     } catch {
       return false;
@@ -228,10 +295,10 @@ export default function QuizClient({ studentId }: { studentId: string }) {
   }
 
   async function handleListen() {
-    if (!question || isListening) return;
+    if (!question || isPlaying) return;
     const text = question.hint[lang];
     setShowHint(true);
-    setIsListening(true);
+    setIsPlaying(true);
     setVoiceNote("");
 
     const cacheKey = `/api/tts?id=${encodeURIComponent(question.id)}&lang=${lang}`;
@@ -242,8 +309,7 @@ export default function QuizClient({ studentId }: { studentId: string }) {
         if (cached) {
           const played = await playAudioBlob(await cached.blob());
           if (played) {
-            setVoiceNote("Played cached audio hint");
-            setIsListening(false);
+            setVoiceNote("Playing cached audio hint");
             return;
           }
         }
@@ -264,8 +330,7 @@ export default function QuizClient({ studentId }: { studentId: string }) {
           }
           const played = await playAudioBlob(await res.blob());
           if (played) {
-            setVoiceNote("Played ElevenLabs voice hint");
-            setIsListening(false);
+            setVoiceNote("Playing ElevenLabs voice hint");
             return;
           }
         }
@@ -275,14 +340,16 @@ export default function QuizClient({ studentId }: { studentId: string }) {
     }
 
     const spoke = speakLocal(text, lang);
-    setVoiceNote(
-      spoke
-        ? isOffline
+    if (spoke) {
+      setVoiceNote(
+        isOffline
           ? "Playing offline browser voice hint"
           : "Playing browser voice fallback"
-        : "Voice playback unavailable on this device"
-    );
-    setIsListening(false);
+      );
+    } else {
+      setVoiceNote("Voice playback unavailable on this device");
+      setIsPlaying(false);
+    }
   }
 
   const mathPct = Math.round(mastery.math * 100);
@@ -290,197 +357,244 @@ export default function QuizClient({ studentId }: { studentId: string }) {
   const isRemedialQ = Boolean(
     question && remedial?.questionIds.includes(question.id)
   );
+  const sessionDone =
+    seenIds.length +
+    (chosenIdx !== null && question && !seenIds.includes(question.id) ? 1 : 0);
+  const sessionPct = Math.min(
+    100,
+    Math.round((sessionDone / questions.length) * 100)
+  );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4">
-        <div>
-          <div className="flex items-center gap-3">
+    <div className="mx-auto max-w-2xl space-y-5">
+      <div className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/"
-              className="text-sm font-medium text-emerald-700 hover:underline"
+              className="inline-flex min-h-[44px] items-center rounded-md px-1.5 text-sm font-medium text-[var(--brand)] transition-all duration-150 ease-out hover:bg-[var(--bg-paper)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
             >
               Students
             </Link>
-            <span className="text-slate-300">/</span>
-            <h1 className="text-xl font-semibold text-slate-900">
-              {student.name} (Grade {student.grade})
+            <span className="text-sm text-[var(--ink-muted)]">/</span>
+            <h1 className="font-heading text-lg font-semibold text-[var(--ink)]">
+              {student.name}
             </h1>
+            <span className="text-xs font-medium text-[var(--ink-muted)] tabular-nums">
+              Grade {student.grade}
+            </span>
           </div>
-          <p className="mt-1 text-sm text-slate-600">
+
+          <div className="text-xs text-[var(--ink-muted)] tabular-nums">
             Pending sync: {syncQueue.length}
             {syncQueue.length > 0 && (
               <>
                 {" · "}
                 <Link
                   href="/teacher"
-                  className="font-medium text-emerald-700 hover:underline"
+                  className="font-medium text-[var(--brand)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
                 >
-                  Sync on Teacher view
+                  Sync in teacher
                 </Link>
               </>
             )}
-          </p>
+          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={toggleOffline}
-          aria-pressed={isOffline}
-          className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
-            isOffline
-              ? "border-amber-300 bg-amber-50 text-amber-800"
-              : "border-emerald-300 bg-emerald-50 text-emerald-800"
-          }`}
-        >
-          {isOffline ? "Offline Mode" : "Online Mode"}
-        </button>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs text-[var(--ink-muted)]">
+            <span>Session progress</span>
+            <span className="tabular-nums">
+              {sessionDone} of {questions.length}
+            </span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-paper)]">
+            <div
+              className="h-full bg-[var(--brand)] transition-[width] duration-300 ease-out"
+              style={{ width: `${sessionPct}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-3 pt-1 sm:grid-cols-2">
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs font-medium">
+              <span className="text-[var(--ink-muted)]">Math mastery</span>
+              <span className="text-[var(--ink)] tabular-nums">{mathPct}%</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-paper)]">
+              <div
+                className="h-full transition-[width] duration-300 ease-out"
+                style={{
+                  width: `${mathPct}%`,
+                  backgroundColor: masteryColor(mastery.math),
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs font-medium">
+              <span className="text-[var(--ink-muted)]">Reading mastery</span>
+              <span className="text-[var(--ink)] tabular-nums">
+                {readingPct}%
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-paper)]">
+              <div
+                className="h-full transition-[width] duration-300 ease-out"
+                style={{
+                  width: `${readingPct}%`,
+                  backgroundColor: masteryColor(mastery.reading),
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {remedial && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <div className="font-semibold">
-            Synced Remedial Focus ({remedial.subject})
+        <div className="rounded-lg border border-[var(--status-warn)] bg-[var(--warn-bg)] p-3.5 text-sm text-[var(--ink)]">
+          <div className="font-heading font-semibold text-[var(--status-warn)]">
+            Synced remedial focus · {subjectLabel(remedial.subject)}
           </div>
-          <p className="mt-1">{remedial.tip}</p>
+          <p className="mt-1 text-[var(--ink)]">{remedial.tip}</p>
         </div>
       )}
 
-      <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
-        <div>
-          <div className="mb-1 flex justify-between text-sm font-medium text-slate-700">
-            <span>Math Mastery</span>
-            <span>{mathPct}%</span>
-          </div>
-          <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full bg-emerald-600 transition-all duration-300"
-              style={{ width: `${mathPct}%` }}
-            />
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div
+          role="group"
+          aria-label="Subject focus"
+          className="inline-flex rounded-md border border-[var(--border)] bg-[var(--surface)] p-0.5"
+        >
+          {[
+            { key: undefined, label: "Adaptive" },
+            { key: "math" as const, label: "Math" },
+            { key: "reading" as const, label: "Reading" },
+          ].map((item) => {
+            const active = subject === item.key;
+            return (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => changeSubject(item.key)}
+                aria-pressed={active}
+                className={`min-h-[44px] rounded-md px-3 text-sm font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] ${
+                  active
+                    ? "bg-[var(--brand)] text-[var(--surface)] hover:bg-[var(--brand-hover)]"
+                    : "text-[var(--ink)] hover:bg-[var(--bg-paper)]"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
 
-        <div>
-          <div className="mb-1 flex justify-between text-sm font-medium text-slate-700">
-            <span>Reading Mastery</span>
-            <span>{readingPct}%</span>
-          </div>
-          <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full bg-sky-600 transition-all duration-300"
-              style={{ width: `${readingPct}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => changeSubject(undefined)}
-            className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
-              subject === undefined
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-200 bg-white text-slate-700"
-            }`}
-          >
-            Adaptive
-          </button>
-          <button
-            type="button"
-            onClick={() => changeSubject("math")}
-            className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
-              subject === "math"
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-200 bg-white text-slate-700"
-            }`}
-          >
-            Math
-          </button>
-          <button
-            type="button"
-            onClick={() => changeSubject("reading")}
-            className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
-              subject === "reading"
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-200 bg-white text-slate-700"
-            }`}
-          >
-            Reading
-          </button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {langs.map((item) => (
-            <button
-              key={item.code}
-              type="button"
-              onClick={() => changeLang(item.code)}
-              aria-pressed={lang === item.code}
-              className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
-                lang === item.code
-                  ? "border-emerald-600 bg-emerald-600 text-white"
-                  : "border-slate-200 bg-white text-slate-700"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div
+          role="group"
+          aria-label="Language"
+          className="inline-flex rounded-md border border-[var(--border)] bg-[var(--surface)] p-0.5"
+        >
+          {langs.map((item) => {
+            const active = lang === item.code;
+            return (
+              <button
+                key={item.code}
+                type="button"
+                onClick={() => changeLang(item.code)}
+                aria-pressed={active}
+                className={`min-h-[44px] rounded-md px-3 text-sm font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] ${
+                  active
+                    ? "bg-[var(--brand)] text-[var(--surface)] hover:bg-[var(--brand-hover)]"
+                    : "text-[var(--ink)] hover:bg-[var(--bg-paper)]"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {question && (
-        <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-            <div className="flex flex-wrap items-center gap-2">
+        <section
+          key={`${question.id}-${qIdx}`}
+          className="animate-fade-in space-y-5 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[var(--ink-muted)] tabular-nums">
               <span>
-                Question {qIdx + 1} · {question.subject} · Level{" "}
+                Question {qIdx + 1} · {subjectLabel(question.subject)} · Level{" "}
                 {question.level}
               </span>
               {isRemedialQ && (
-                <span className="rounded bg-amber-100 px-2 py-0.5 text-[11px] font-semibold normal-case tracking-normal text-amber-900">
+                <span className="rounded-md border border-[var(--status-warn)] bg-[var(--warn-bg)] px-2 py-0.5 text-xs font-medium text-[var(--status-warn)]">
                   Remedial drill
                 </span>
               )}
             </div>
+
             <button
               type="button"
               onClick={handleListen}
-              disabled={isListening}
-              className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold normal-case tracking-normal text-amber-900 hover:bg-amber-100 disabled:opacity-60"
+              disabled={isPlaying}
+              className={`inline-flex min-h-[44px] items-center gap-2 rounded-md border px-3.5 text-sm font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] ${
+                isPlaying
+                  ? "border-[var(--brand)] bg-[var(--brand-bg)] text-[var(--brand)]"
+                  : "border-[var(--border)] bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--bg-paper)]"
+              }`}
             >
-              {isListening ? "Loading..." : "Listen"}
+              {isPlaying && (
+                <span className="inline-flex h-3.5 items-end gap-0.5" aria-hidden="true">
+                  <span className="eq-bar h-full w-0.5 rounded-sm bg-[var(--brand)]" />
+                  <span className="eq-bar eq-bar-2 h-full w-0.5 rounded-sm bg-[var(--brand)]" />
+                  <span className="eq-bar eq-bar-3 h-full w-0.5 rounded-sm bg-[var(--brand)]" />
+                </span>
+              )}
+              <span>{isPlaying ? "Playing..." : "Listen"}</span>
             </button>
           </div>
 
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="font-heading text-lg font-semibold leading-snug text-[var(--ink)]">
             {question.prompt[lang]}
           </h2>
 
           {showHint && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <div className="animate-fade-in rounded-lg border border-[var(--border)] bg-[var(--bg-paper)] p-3.5 text-sm text-[var(--ink)]">
               <p>{question.hint[lang]}</p>
               {voiceNote && (
-                <p className="mt-1 text-xs text-amber-700">{voiceNote}</p>
+                <p className="mt-1 text-xs text-[var(--ink-muted)]">
+                  {voiceNote}
+                </p>
               )}
             </div>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-2.5">
             {question.options[lang].map((option, idx) => {
               const isSelected = chosenIdx === idx;
               const isRight = idx === question.answerIdx;
               let btnStyle =
-                "border-slate-200 bg-white text-slate-800 hover:border-emerald-500";
+                "border-[var(--border)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--brand)] hover:bg-[var(--bg-paper)]";
+              let keyStyle =
+                "border-[var(--border)] bg-[var(--bg-paper)] text-[var(--ink-muted)]";
+
               if (chosenIdx !== null) {
                 if (isRight) {
                   btnStyle =
-                    "border-emerald-600 bg-emerald-50 text-emerald-900";
+                    "border-[var(--status-ok)] bg-[var(--ok-bg)] text-[var(--ink)]";
+                  keyStyle =
+                    "border-[var(--status-ok)] bg-[var(--surface)] text-[var(--status-ok)]";
                 } else if (isSelected) {
-                  btnStyle = "border-rose-500 bg-rose-50 text-rose-900";
+                  btnStyle =
+                    "border-[var(--status-err)] bg-[var(--err-bg)] text-[var(--ink)]";
+                  keyStyle =
+                    "border-[var(--status-err)] bg-[var(--surface)] text-[var(--status-err)]";
                 } else {
-                  btnStyle = "border-slate-200 bg-slate-50 text-slate-500";
+                  btnStyle =
+                    "border-[var(--border)] bg-[var(--bg-paper)] text-[var(--ink-muted)]";
                 }
               }
 
@@ -490,21 +604,26 @@ export default function QuizClient({ studentId }: { studentId: string }) {
                   type="button"
                   disabled={chosenIdx !== null}
                   onClick={() => handleAnswer(idx)}
-                  className={`rounded-lg border p-4 text-left text-sm font-medium transition ${btnStyle}`}
+                  className={`flex min-h-[48px] w-full items-center gap-3 rounded-md border px-3.5 py-2.5 text-left text-sm font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] disabled:active:scale-100 ${btnStyle}`}
                 >
-                  {option}
+                  <span
+                    className={`font-heading inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-xs font-semibold tabular-nums transition-colors duration-150 ${keyStyle}`}
+                  >
+                    {OPTION_KEYS[idx]}
+                  </span>
+                  <span className="flex-1">{option}</span>
                 </button>
               );
             })}
           </div>
 
           {chosenIdx !== null && (
-            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-4">
+            <div className="animate-fade-in flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
               <p
                 className={`text-sm font-medium ${
                   chosenIdx === question.answerIdx
-                    ? "text-emerald-700"
-                    : "text-rose-700"
+                    ? "text-[var(--status-ok)]"
+                    : "text-[var(--status-err)]"
                 }`}
               >
                 {chosenIdx === question.answerIdx
@@ -514,13 +633,13 @@ export default function QuizClient({ studentId }: { studentId: string }) {
               <button
                 type="button"
                 onClick={handleNext}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                className="inline-flex min-h-[44px] items-center rounded-md bg-[var(--brand)] px-4 text-sm font-medium text-[var(--surface)] transition-all duration-150 ease-out hover:bg-[var(--brand-hover)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
               >
-                Next Question
+                Next question
               </button>
             </div>
           )}
-        </div>
+        </section>
       )}
     </div>
   );

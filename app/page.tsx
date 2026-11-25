@@ -95,10 +95,10 @@ export default function HomePage() {
                   type="button"
                   onClick={() => selectLang(item.code)}
                   aria-pressed={active}
-                  className={`min-h-[44px] rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] ${
+                  className={`min-h-[44px] rounded-md px-3 text-sm font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] ${
                     active
                       ? "bg-[var(--brand)] text-[var(--surface)] hover:bg-[var(--brand-hover)]"
-                      : "text-[var(--ink)] hover:bg-[var(--bg-paper)] active:bg-[var(--bg-paper)]"
+                      : "text-[var(--ink)] hover:bg-[var(--bg-paper)]"
                   }`}
                 >
                   {item.label}
@@ -122,7 +122,7 @@ export default function HomePage() {
             <Link
               key={student.id}
               href={`/learn/${student.id}?lang=${lang}`}
-              className="group flex min-h-[72px] flex-col justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-[var(--bg-paper)] active:bg-[var(--bg-paper)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--brand)] sm:flex-row sm:items-center sm:gap-6"
+              className="group flex min-h-[72px] flex-col justify-between gap-3 px-4 py-3.5 transition-all duration-150 ease-out hover:bg-[var(--bg-paper)] active:scale-[0.99] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--brand)] sm:flex-row sm:items-center sm:gap-6"
             >
               <div className="flex items-center gap-3.5">
                 <div className="font-heading flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-paper)] text-sm font-semibold text-[var(--brand)]">
@@ -137,7 +137,7 @@ export default function HomePage() {
                       Grade {student.grade}
                     </span>
                     {remedial && (
-                      <span className="rounded-md border border-[var(--status-warn)] px-1.5 py-0.5 text-xs font-medium text-[var(--status-warn)]">
+                      <span className="rounded-md border border-[var(--status-warn)] bg-[var(--warn-bg)] px-1.5 py-0.5 text-xs font-medium text-[var(--status-warn)]">
                         Remedial focus
                       </span>
                     )}
@@ -156,9 +156,9 @@ export default function HomePage() {
                       {overallPct}%
                     </span>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-md bg-[var(--bg-paper)] border border-[var(--border)]">
+                  <div className="h-2 w-full overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-paper)]">
                     <div
-                      className="h-full transition-all duration-300"
+                      className="h-full transition-[width] duration-300 ease-out"
                       style={{
                         width: `${overallPct}%`,
                         backgroundColor: masteryColor(overall),
@@ -167,7 +167,7 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <span className="inline-flex min-h-[44px] items-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-medium text-[var(--brand)] transition-colors group-hover:border-[var(--brand)] group-hover:bg-[var(--brand)] group-hover:text-[var(--surface)]">
+                <span className="inline-flex min-h-[44px] items-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-medium text-[var(--brand)] transition-all duration-150 ease-out group-hover:border-[var(--brand)] group-hover:bg-[var(--brand)] group-hover:text-[var(--surface)]">
                   Practice
                 </span>
               </div>
@@ -179,7 +179,7 @@ export default function HomePage() {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm">
         <div className="flex items-center gap-2.5 text-[var(--ink-muted)]">
           <span
-            className="h-2 w-2 shrink-0 rounded-sm"
+            className="h-2 w-2 shrink-0 rounded-sm transition-colors duration-150"
             style={{
               backgroundColor:
                 isOffline || pendingCount > 0
@@ -195,7 +195,7 @@ export default function HomePage() {
 
         <Link
           href="/teacher"
-          className="inline-flex min-h-[44px] items-center text-sm font-medium text-[var(--brand)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
+          className="inline-flex min-h-[44px] items-center rounded-md px-2 text-sm font-medium text-[var(--brand)] transition-all duration-150 ease-out hover:bg-[var(--bg-paper)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
         >
           Open teacher sync
         </Link>

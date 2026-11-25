@@ -11,6 +11,10 @@
   --status-ok: #15803D;
   --status-warn: #B45309;
   --status-err: #B91C1C;
+  --ok-bg: color-mix(in srgb, var(--status-ok) 10%, var(--surface));
+  --warn-bg: color-mix(in srgb, var(--status-warn) 10%, var(--surface));
+  --err-bg: color-mix(in srgb, var(--status-err) 10%, var(--surface));
+  --brand-bg: color-mix(in srgb, var(--brand) 8%, var(--surface));
 }
 
 @theme inline {
@@ -29,4 +33,53 @@ h2,
 h3,
 .font-heading {
   font-family: var(--font-jakarta), system-ui, sans-serif;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes eqPulse {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 150ms ease-out both;
+}
+
+.eq-bar {
+  transform-origin: bottom;
+  animation: eqPulse 600ms ease-in-out infinite;
+}
+
+.eq-bar-2 {
+  animation-delay: 150ms;
+}
+
+.eq-bar-3 {
+  animation-delay: 300ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .eq-bar,
+  .animate-spin {
+    animation: none;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
 }
