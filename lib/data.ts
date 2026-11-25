@@ -22,8 +22,8 @@ export type Question = {
 
 export const langs: { code: Lang; label: string }[] = [
   { code: "en", label: "English" },
-  { code: "kn", label: "Kannada" },
-  { code: "hi", label: "Hindi" },
+  { code: "kn", label: "ಕನ್ನಡ" },
+  { code: "hi", label: "हिन्दी" },
 ];
 
 export const students: Student[] = [

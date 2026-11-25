@@ -209,6 +209,9 @@ export function getOffline(): boolean {
 
 export function setOffline(isOffline: boolean): void {
   writeString(KEYS.offline, isOffline ? "1" : "0");
+  if (hasWindow()) {
+    window.dispatchEvent(new Event("shiksha-offline-change"));
+  }
 }
 
 export function isEffectiveOffline(): boolean {
@@ -220,11 +223,14 @@ export function watchConnectivity(onChange: (offline: boolean) => void): () => v
   if (!hasWindow()) return () => {};
   const onOffline = () => onChange(true);
   const onOnline = () => onChange(getOffline());
+  const onSync = () => onChange(isEffectiveOffline());
   window.addEventListener("offline", onOffline);
   window.addEventListener("online", onOnline);
+  window.addEventListener("shiksha-offline-change", onSync);
   return () => {
     window.removeEventListener("offline", onOffline);
     window.removeEventListener("online", onOnline);
+    window.removeEventListener("shiksha-offline-change", onSync);
   };
 }
 

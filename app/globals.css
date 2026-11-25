@@ -1,7 +1,32 @@
 @import "tailwindcss";
 
+:root {
+  --bg-paper: #F6F7F4;
+  --surface: #FFFFFF;
+  --border: #D8DFD8;
+  --brand: #145343;
+  --brand-hover: #0F3F33;
+  --ink: #111827;
+  --ink-muted: #4B5563;
+  --status-ok: #15803D;
+  --status-warn: #B45309;
+  --status-err: #B91C1C;
+}
+
+@theme inline {
+  --font-sans: var(--font-noto), system-ui, sans-serif;
+  --font-heading: var(--font-jakarta), system-ui, sans-serif;
+}
+
 body {
-  background: #f8fafc;
-  color: #0f172a;
-  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg-paper);
+  color: var(--ink);
+  font-family: var(--font-noto), system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+.font-heading {
+  font-family: var(--font-jakarta), system-ui, sans-serif;
 }
