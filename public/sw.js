@@ -14,7 +14,9 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(SHELL_URLS))
+      .then((cache) =>
+        Promise.allSettled(SHELL_URLS.map((url) => cache.add(url)))
+      )
       .then(() => self.skipWaiting())
   );
 });
@@ -57,12 +59,18 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (url.searchParams.has("_rsc")) {
+    return;
+  }
+
   event.respondWith(
     fetch(request)
       .then((res) => {
         if (res.ok) {
           const copy = res.clone();
-          caches.open(CACHE_NAME).then((c) => c.put(request, copy));
+          const cacheKey =
+            request.mode === "navigate" ? url.pathname : request;
+          caches.open(CACHE_NAME).then((c) => c.put(cacheKey, copy));
         }
         return res;
       })
