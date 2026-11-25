@@ -11,10 +11,11 @@
   --status-ok: #15803D;
   --status-warn: #B45309;
   --status-err: #B91C1C;
-  --ok-bg: color-mix(in srgb, var(--status-ok) 10%, var(--surface));
-  --warn-bg: color-mix(in srgb, var(--status-warn) 10%, var(--surface));
-  --err-bg: color-mix(in srgb, var(--status-err) 10%, var(--surface));
-  --brand-bg: color-mix(in srgb, var(--brand) 8%, var(--surface));
+  --ok-bg: color-mix(in srgb, var(--status-ok) 14%, var(--surface));
+  --warn-bg: color-mix(in srgb, var(--status-warn) 14%, var(--surface));
+  --err-bg: color-mix(in srgb, var(--status-err) 14%, var(--surface));
+  --brand-bg: color-mix(in srgb, var(--brand) 12%, var(--surface));
+  --brand-bg-active: color-mix(in srgb, var(--brand) 22%, var(--surface));
 }
 
 @theme inline {

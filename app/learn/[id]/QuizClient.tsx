@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_MASTERY,
+  masteryTone,
   pickQuestion,
   updateBkt,
   type MasteryMap,
@@ -40,11 +41,17 @@ const SPEECH_LOCALE: Record<Lang, string> = {
 
 const OPTION_KEYS = ["A", "B", "C", "D"];
 
-function masteryColor(score: number): string {
-  if (score >= 0.7) return "var(--status-ok)";
-  if (score >= 0.45) return "var(--status-warn)";
-  return "var(--status-err)";
-}
+const TONE_BADGE = {
+  ok: "border-[var(--status-ok)] bg-[var(--ok-bg)] text-[var(--status-ok)]",
+  warn: "border-[var(--status-warn)] bg-[var(--warn-bg)] text-[var(--status-warn)]",
+  err: "border-[var(--status-err)] bg-[var(--err-bg)] text-[var(--status-err)]",
+} as const;
+
+const TONE_FILL = {
+  ok: "var(--status-ok)",
+  warn: "var(--status-warn)",
+  err: "var(--status-err)",
+} as const;
 
 function subjectLabel(subject: Subject): string {
   return subject === "math" ? "Math" : "Reading";
@@ -148,13 +155,13 @@ export default function QuizClient({ studentId }: { studentId: string }) {
 
   if (!student) {
     return (
-      <div className="mx-auto max-w-2xl space-y-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
+      <div className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
         <h1 className="font-heading text-lg font-semibold text-[var(--ink)]">
           Student not found
         </h1>
         <Link
           href="/"
-          className="inline-flex min-h-[44px] items-center rounded-md bg-[var(--brand)] px-4 text-sm font-medium text-[var(--surface)] transition-all duration-150 ease-out hover:bg-[var(--brand-hover)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
+          className="inline-flex min-h-[44px] items-center rounded-md bg-[var(--brand)] px-4 text-sm font-medium text-[var(--surface)] transition-all duration-150 ease-out hover:bg-[var(--brand-hover)] active:scale-[0.98] active:bg-[var(--brand-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
         >
           Back to students
         </Link>
@@ -354,6 +361,8 @@ export default function QuizClient({ studentId }: { studentId: string }) {
 
   const mathPct = Math.round(mastery.math * 100);
   const readingPct = Math.round(mastery.reading * 100);
+  const mathTone = masteryTone(mastery.math);
+  const readingTone = masteryTone(mastery.reading);
   const isRemedialQ = Boolean(
     question && remedial?.questionIds.includes(question.id)
   );
@@ -366,26 +375,25 @@ export default function QuizClient({ studentId }: { studentId: string }) {
   );
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
-      <div className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-6">
+      <section className="flex flex-col gap-4 border-b border-[var(--border)] pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <Link
               href="/"
-              className="inline-flex min-h-[44px] items-center rounded-md px-1.5 text-sm font-medium text-[var(--brand)] transition-all duration-150 ease-out hover:bg-[var(--bg-paper)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
+              className="inline-flex min-h-[44px] items-center rounded-md px-1.5 font-medium text-[var(--brand)] transition-all duration-150 ease-out hover:bg-[var(--brand-bg)] active:scale-[0.98] active:bg-[var(--brand-bg-active)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
             >
               Students
             </Link>
-            <span className="text-sm text-[var(--ink-muted)]">/</span>
-            <h1 className="font-heading text-lg font-semibold text-[var(--ink)]">
+            <span className="text-[var(--ink-muted)]">/</span>
+            <h1 className="font-heading text-2xl font-semibold tracking-tight text-[var(--ink)]">
               {student.name}
             </h1>
-            <span className="text-xs font-medium text-[var(--ink-muted)] tabular-nums">
+            <span className="text-sm font-medium text-[var(--ink-muted)] tabular-nums">
               Grade {student.grade}
             </span>
           </div>
-
-          <div className="text-xs text-[var(--ink-muted)] tabular-nums">
+          <p className="text-sm text-[var(--ink-muted)] tabular-nums">
             Pending sync: {syncQueue.length}
             {syncQueue.length > 0 && (
               <>
@@ -398,17 +406,75 @@ export default function QuizClient({ studentId }: { studentId: string }) {
                 </Link>
               </>
             )}
-          </div>
+          </p>
         </div>
 
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs text-[var(--ink-muted)]">
-            <span>Session progress</span>
-            <span className="tabular-nums">
+        <div className="flex flex-wrap items-end gap-3">
+          <div
+            role="group"
+            aria-label="Subject focus"
+            className="inline-flex rounded-md border border-[var(--border)] bg-[var(--surface)] p-0.5"
+          >
+            {[
+              { key: undefined, label: "Adaptive" },
+              { key: "math" as const, label: "Math" },
+              { key: "reading" as const, label: "Reading" },
+            ].map((item) => {
+              const active = subject === item.key;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => changeSubject(item.key)}
+                  aria-pressed={active}
+                  className={`min-h-[44px] rounded-md px-3 text-sm font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] ${
+                    active
+                      ? "bg-[var(--brand)] text-[var(--surface)] hover:bg-[var(--brand-hover)] active:bg-[var(--brand-hover)]"
+                      : "text-[var(--ink)] hover:bg-[var(--brand-bg)] active:bg-[var(--brand-bg-active)] active:text-[var(--brand)]"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div
+            role="group"
+            aria-label="Language"
+            className="inline-flex rounded-md border border-[var(--border)] bg-[var(--surface)] p-0.5"
+          >
+            {langs.map((item) => {
+              const active = lang === item.code;
+              return (
+                <button
+                  key={item.code}
+                  type="button"
+                  onClick={() => changeLang(item.code)}
+                  aria-pressed={active}
+                  className={`min-h-[44px] rounded-md px-3 text-sm font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] ${
+                    active
+                      ? "bg-[var(--brand)] text-[var(--surface)] hover:bg-[var(--brand-hover)] active:bg-[var(--brand-hover)]"
+                      : "text-[var(--ink)] hover:bg-[var(--brand-bg)] active:bg-[var(--brand-bg-active)] active:text-[var(--brand)]"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div className="flex items-center justify-between text-xs font-medium">
+            <span className="text-[var(--ink-muted)]">Session progress</span>
+            <span className="text-[var(--ink)] tabular-nums">
               {sessionDone} of {questions.length}
             </span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-paper)]">
+          <div className="h-2 w-full overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-paper)]">
             <div
               className="h-full bg-[var(--brand)] transition-[width] duration-300 ease-out"
               style={{ width: `${sessionPct}%` }}
@@ -416,39 +482,43 @@ export default function QuizClient({ studentId }: { studentId: string }) {
           </div>
         </div>
 
-        <div className="grid gap-3 pt-1 sm:grid-cols-2">
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs font-medium">
-              <span className="text-[var(--ink-muted)]">Math mastery</span>
-              <span className="text-[var(--ink)] tabular-nums">{mathPct}%</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-paper)]">
-              <div
-                className="h-full transition-[width] duration-300 ease-out"
-                style={{
-                  width: `${mathPct}%`,
-                  backgroundColor: masteryColor(mastery.math),
-                }}
-              />
-            </div>
+        <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div className="flex items-center justify-between text-xs font-medium">
+            <span className="text-[var(--ink-muted)]">Math mastery</span>
+            <span
+              className={`rounded-md border px-2 py-0.5 tabular-nums ${TONE_BADGE[mathTone]}`}
+            >
+              {mathPct}%
+            </span>
           </div>
+          <div className="h-2 w-full overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-paper)]">
+            <div
+              className="h-full transition-[width] duration-300 ease-out"
+              style={{
+                width: `${mathPct}%`,
+                backgroundColor: TONE_FILL[mathTone],
+              }}
+            />
+          </div>
+        </div>
 
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs font-medium">
-              <span className="text-[var(--ink-muted)]">Reading mastery</span>
-              <span className="text-[var(--ink)] tabular-nums">
-                {readingPct}%
-              </span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-paper)]">
-              <div
-                className="h-full transition-[width] duration-300 ease-out"
-                style={{
-                  width: `${readingPct}%`,
-                  backgroundColor: masteryColor(mastery.reading),
-                }}
-              />
-            </div>
+        <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div className="flex items-center justify-between text-xs font-medium">
+            <span className="text-[var(--ink-muted)]">Reading mastery</span>
+            <span
+              className={`rounded-md border px-2 py-0.5 tabular-nums ${TONE_BADGE[readingTone]}`}
+            >
+              {readingPct}%
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-paper)]">
+            <div
+              className="h-full transition-[width] duration-300 ease-out"
+              style={{
+                width: `${readingPct}%`,
+                backgroundColor: TONE_FILL[readingTone],
+              }}
+            />
           </div>
         </div>
       </div>
@@ -462,75 +532,19 @@ export default function QuizClient({ studentId }: { studentId: string }) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div
-          role="group"
-          aria-label="Subject focus"
-          className="inline-flex rounded-md border border-[var(--border)] bg-[var(--surface)] p-0.5"
-        >
-          {[
-            { key: undefined, label: "Adaptive" },
-            { key: "math" as const, label: "Math" },
-            { key: "reading" as const, label: "Reading" },
-          ].map((item) => {
-            const active = subject === item.key;
-            return (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => changeSubject(item.key)}
-                aria-pressed={active}
-                className={`min-h-[44px] rounded-md px-3 text-sm font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] ${
-                  active
-                    ? "bg-[var(--brand)] text-[var(--surface)] hover:bg-[var(--brand-hover)]"
-                    : "text-[var(--ink)] hover:bg-[var(--bg-paper)]"
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div
-          role="group"
-          aria-label="Language"
-          className="inline-flex rounded-md border border-[var(--border)] bg-[var(--surface)] p-0.5"
-        >
-          {langs.map((item) => {
-            const active = lang === item.code;
-            return (
-              <button
-                key={item.code}
-                type="button"
-                onClick={() => changeLang(item.code)}
-                aria-pressed={active}
-                className={`min-h-[44px] rounded-md px-3 text-sm font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] ${
-                  active
-                    ? "bg-[var(--brand)] text-[var(--surface)] hover:bg-[var(--brand-hover)]"
-                    : "text-[var(--ink)] hover:bg-[var(--bg-paper)]"
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {question && (
         <section
           key={`${question.id}-${qIdx}`}
           className="animate-fade-in space-y-5 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[var(--ink-muted)] tabular-nums">
-              <span>
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium tabular-nums">
+              <span className="rounded-md border border-[var(--border)] bg-[var(--bg-paper)] px-2.5 py-1 text-[var(--ink-muted)]">
                 Question {qIdx + 1} · {subjectLabel(question.subject)} · Level{" "}
                 {question.level}
               </span>
               {isRemedialQ && (
-                <span className="rounded-md border border-[var(--status-warn)] bg-[var(--warn-bg)] px-2 py-0.5 text-xs font-medium text-[var(--status-warn)]">
+                <span className="rounded-md border border-[var(--status-warn)] bg-[var(--warn-bg)] px-2 py-1 text-xs font-medium text-[var(--status-warn)]">
                   Remedial drill
                 </span>
               )}
@@ -542,59 +556,62 @@ export default function QuizClient({ studentId }: { studentId: string }) {
               disabled={isPlaying}
               className={`inline-flex min-h-[44px] items-center gap-2 rounded-md border px-3.5 text-sm font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] ${
                 isPlaying
-                  ? "border-[var(--brand)] bg-[var(--brand-bg)] text-[var(--brand)]"
-                  : "border-[var(--border)] bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--bg-paper)]"
+                  ? "border-[var(--brand)] bg-[var(--brand)] text-[var(--surface)]"
+                  : "border-[var(--brand)] bg-[var(--brand-bg)] text-[var(--brand)] hover:bg-[var(--brand)] hover:text-[var(--surface)] active:bg-[var(--brand-hover)] active:text-[var(--surface)]"
               }`}
             >
               {isPlaying && (
-                <span className="inline-flex h-3.5 items-end gap-0.5" aria-hidden="true">
-                  <span className="eq-bar h-full w-0.5 rounded-sm bg-[var(--brand)]" />
-                  <span className="eq-bar eq-bar-2 h-full w-0.5 rounded-sm bg-[var(--brand)]" />
-                  <span className="eq-bar eq-bar-3 h-full w-0.5 rounded-sm bg-[var(--brand)]" />
+                <span
+                  className="inline-flex h-3.5 items-end gap-0.5"
+                  aria-hidden="true"
+                >
+                  <span className="eq-bar h-full w-0.5 rounded-sm bg-current" />
+                  <span className="eq-bar eq-bar-2 h-full w-0.5 rounded-sm bg-current" />
+                  <span className="eq-bar eq-bar-3 h-full w-0.5 rounded-sm bg-current" />
                 </span>
               )}
               <span>{isPlaying ? "Playing..." : "Listen"}</span>
             </button>
           </div>
 
-          <h2 className="font-heading text-lg font-semibold leading-snug text-[var(--ink)]">
+          <h2 className="font-heading text-xl font-semibold leading-snug text-[var(--ink)]">
             {question.prompt[lang]}
           </h2>
 
           {showHint && (
-            <div className="animate-fade-in rounded-lg border border-[var(--border)] bg-[var(--bg-paper)] p-3.5 text-sm text-[var(--ink)]">
+            <div className="animate-fade-in rounded-lg border border-[var(--brand)] bg-[var(--brand-bg)] p-3.5 text-sm text-[var(--ink)]">
               <p>{question.hint[lang]}</p>
               {voiceNote && (
-                <p className="mt-1 text-xs text-[var(--ink-muted)]">
-                  {voiceNote}
-                </p>
+                <p className="mt-1 text-xs text-[var(--brand)]">{voiceNote}</p>
               )}
             </div>
           )}
 
-          <div className="grid gap-2.5">
+          <div className="grid gap-3 sm:grid-cols-2">
             {question.options[lang].map((option, idx) => {
               const isSelected = chosenIdx === idx;
               const isRight = idx === question.answerIdx;
               let btnStyle =
-                "border-[var(--border)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--brand)] hover:bg-[var(--bg-paper)]";
+                "border-[var(--border)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--brand)] hover:bg-[var(--brand-bg)] active:border-[var(--brand)] active:bg-[var(--brand-bg-active)]";
               let keyStyle =
-                "border-[var(--border)] bg-[var(--bg-paper)] text-[var(--ink-muted)]";
+                "border-[var(--border)] bg-[var(--bg-paper)] text-[var(--ink-muted)] group-hover:border-[var(--brand)] group-hover:bg-[var(--brand)] group-hover:text-[var(--surface)] group-active:bg-[var(--brand-hover)] group-active:text-[var(--surface)]";
 
               if (chosenIdx !== null) {
                 if (isRight) {
                   btnStyle =
                     "border-[var(--status-ok)] bg-[var(--ok-bg)] text-[var(--ink)]";
                   keyStyle =
-                    "border-[var(--status-ok)] bg-[var(--surface)] text-[var(--status-ok)]";
+                    "border-[var(--status-ok)] bg-[var(--status-ok)] text-[var(--surface)]";
                 } else if (isSelected) {
                   btnStyle =
                     "border-[var(--status-err)] bg-[var(--err-bg)] text-[var(--ink)]";
                   keyStyle =
-                    "border-[var(--status-err)] bg-[var(--surface)] text-[var(--status-err)]";
+                    "border-[var(--status-err)] bg-[var(--status-err)] text-[var(--surface)]";
                 } else {
                   btnStyle =
                     "border-[var(--border)] bg-[var(--bg-paper)] text-[var(--ink-muted)]";
+                  keyStyle =
+                    "border-[var(--border)] bg-[var(--surface)] text-[var(--ink-muted)]";
                 }
               }
 
@@ -604,7 +621,7 @@ export default function QuizClient({ studentId }: { studentId: string }) {
                   type="button"
                   disabled={chosenIdx !== null}
                   onClick={() => handleAnswer(idx)}
-                  className={`flex min-h-[48px] w-full items-center gap-3 rounded-md border px-3.5 py-2.5 text-left text-sm font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] disabled:active:scale-100 ${btnStyle}`}
+                  className={`group flex min-h-[52px] w-full items-center gap-3 rounded-md border px-3.5 py-2.5 text-left text-sm font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] disabled:active:scale-100 ${btnStyle}`}
                 >
                   <span
                     className={`font-heading inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-xs font-semibold tabular-nums transition-colors duration-150 ${keyStyle}`}
@@ -633,7 +650,7 @@ export default function QuizClient({ studentId }: { studentId: string }) {
               <button
                 type="button"
                 onClick={handleNext}
-                className="inline-flex min-h-[44px] items-center rounded-md bg-[var(--brand)] px-4 text-sm font-medium text-[var(--surface)] transition-all duration-150 ease-out hover:bg-[var(--brand-hover)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
+                className="inline-flex min-h-[44px] items-center rounded-md bg-[var(--brand)] px-4 text-sm font-medium text-[var(--surface)] transition-all duration-150 ease-out hover:bg-[var(--brand-hover)] active:scale-[0.98] active:bg-[var(--brand-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
               >
                 Next question
               </button>

@@ -182,7 +182,7 @@ export default function TeacherPage() {
             className={`inline-flex min-h-[44px] min-w-[136px] items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] disabled:opacity-80 disabled:active:scale-100 ${
               syncPhase === "done"
                 ? "bg-[var(--status-ok)] text-[var(--surface)]"
-                : "bg-[var(--brand)] text-[var(--surface)] hover:bg-[var(--brand-hover)]"
+                : "bg-[var(--brand)] text-[var(--surface)] hover:bg-[var(--brand-hover)] active:bg-[var(--brand-hover)]"
             }`}
           >
             {syncPhase === "syncing" && (
@@ -219,7 +219,7 @@ export default function TeacherPage() {
           <button
             type="button"
             onClick={handleResetDemo}
-            className="inline-flex min-h-[44px] items-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-3.5 text-sm font-medium text-[var(--ink)] transition-all duration-150 ease-out hover:bg-[var(--bg-paper)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
+            className="inline-flex min-h-[44px] items-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-3.5 text-sm font-medium text-[var(--ink)] transition-all duration-150 ease-out hover:border-[var(--brand)] hover:bg-[var(--brand-bg)] active:scale-[0.98] active:bg-[var(--brand-bg-active)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
           >
             Reset demo
           </button>
@@ -335,7 +335,7 @@ export default function TeacherPage() {
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/learn/${student.id}`}
-                        className="inline-flex min-h-[44px] items-center rounded-md px-3 text-sm font-medium text-[var(--brand)] transition-all duration-150 ease-out hover:bg-[var(--surface)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
+                        className="inline-flex min-h-[44px] items-center rounded-md bg-[var(--brand)] px-3 text-sm font-medium text-[var(--surface)] transition-all duration-150 ease-out hover:bg-[var(--brand-hover)] active:scale-[0.98] active:bg-[var(--brand-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
                       >
                         Practice
                       </Link>

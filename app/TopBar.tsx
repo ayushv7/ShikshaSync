@@ -62,20 +62,20 @@ export default function TopBar() {
             <div className="flex items-center gap-1 text-xs font-medium sm:gap-4 sm:text-sm">
               <Link
                 href="/"
-                className={`inline-flex min-h-[44px] items-center px-1 transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] sm:px-1.5 ${
+                className={`inline-flex min-h-[44px] items-center rounded-md px-1.5 transition-all duration-150 ease-out active:scale-[0.98] active:bg-[var(--brand-bg-active)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] sm:px-2 ${
                   isStudents
                     ? "text-[var(--brand)] underline decoration-2 underline-offset-8"
-                    : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
+                    : "text-[var(--ink-muted)] hover:bg-[var(--bg-paper)] hover:text-[var(--ink)]"
                 }`}
               >
                 Students
               </Link>
               <Link
                 href="/teacher"
-                className={`inline-flex min-h-[44px] items-center px-1 transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] sm:px-1.5 ${
+                className={`inline-flex min-h-[44px] items-center rounded-md px-1.5 transition-all duration-150 ease-out active:scale-[0.98] active:bg-[var(--brand-bg-active)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] sm:px-2 ${
                   isTeacher
                     ? "text-[var(--brand)] underline decoration-2 underline-offset-8"
-                    : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
+                    : "text-[var(--ink-muted)] hover:bg-[var(--bg-paper)] hover:text-[var(--ink)]"
                 }`}
               >
                 Teacher
@@ -87,7 +87,11 @@ export default function TopBar() {
             type="button"
             onClick={toggleOffline}
             aria-pressed={isOffline}
-            className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 text-xs font-medium text-[var(--ink)] transition-all duration-150 ease-out hover:bg-[var(--bg-paper)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] sm:gap-2 sm:px-3 sm:text-sm"
+            className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-2 text-xs font-medium transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] sm:gap-2 sm:px-3 sm:text-sm ${
+              isOffline
+                ? "border-[var(--status-warn)] bg-[var(--warn-bg)] text-[var(--status-warn)] hover:bg-[var(--surface)] active:bg-[var(--status-warn)] active:text-[var(--surface)]"
+                : "border-[var(--status-ok)] bg-[var(--ok-bg)] text-[var(--status-ok)] hover:bg-[var(--surface)] active:bg-[var(--status-ok)] active:text-[var(--surface)]"
+            }`}
           >
             <span
               className={`inline-flex h-3.5 w-6 items-center rounded-md border border-[var(--border)] p-0.5 transition-colors duration-150 ease-out sm:h-4 sm:w-7 ${

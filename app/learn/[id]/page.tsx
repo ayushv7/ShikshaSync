@@ -23,7 +23,7 @@ export default function LearnPage({
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-2xl rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--ink-muted)]">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--ink-muted)]">
           Loading practice sheet...
         </div>
       }

@@ -37,6 +37,12 @@ export function targetLevel(score: number): 1 | 2 | 3 {
   return 3;
 }
 
+export function masteryTone(score: number): "ok" | "warn" | "err" {
+  if (score >= 0.7) return "ok";
+  if (score >= 0.45) return "warn";
+  return "err";
+}
+
 export function pickQuestion(
   pool: Question[],
   mastery: MasteryMap,
