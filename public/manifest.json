@@ -1,0 +1,18 @@
+{
+  "name": "ShikshaSync",
+  "short_name": "ShikshaSync",
+  "description": "Offline-first adaptive learning PWA for rural multi-grade schools",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#047857",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

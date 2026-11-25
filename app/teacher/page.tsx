@@ -98,10 +98,12 @@ export default function TeacherPage() {
     setStatus(null);
 
     try {
+      const payload = JSON.stringify({ deltas: syncQueue, mastery });
+      const upBytes = new Blob([payload]).size;
       const res = await fetch("/api/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deltas: syncQueue, mastery }),
+        body: payload,
       });
 
       if (!res.ok) {
@@ -119,10 +121,11 @@ export default function TeacherPage() {
         remedialPack: RemedialItem[];
       };
 
+      const totalBytes = upBytes + data.payloadBytes;
       const syncInfo: LastSync = {
         at: data.syncedAt,
         source: data.source,
-        bytes: data.payloadBytes,
+        bytes: totalBytes,
       };
 
       clearSyncQueue();
@@ -132,10 +135,12 @@ export default function TeacherPage() {
       setLastSync(syncInfo);
       saveLastSync(syncInfo);
 
-      const kb = (data.payloadBytes / 1024).toFixed(2);
+      const upKb = (upBytes / 1024).toFixed(2);
+      const packKb = (data.payloadBytes / 1024).toFixed(2);
+      const totalKb = (totalBytes / 1024).toFixed(2);
       setStatus({
         ok: true,
-        message: `Synced ${data.syncedCount} deltas (${kb} KB pack via ${data.source}${data.dynamoSynced ? " + DynamoDB" : ""}).`,
+        message: `Synced ${data.syncedCount} deltas (${totalKb} KB total: ${upKb} KB up, ${packKb} KB pack via ${data.source}${data.dynamoSynced ? " + DynamoDB" : ""}).`,
       });
     } catch {
       setStatus({ ok: false, message: "Network error during sync." });

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import "./globals.css";
 import SwRegister from "./SwRegister";
@@ -6,10 +6,14 @@ import SwRegister from "./SwRegister";
 export const metadata: Metadata = {
   title: "ShikshaSync",
   description: "Offline-first adaptive learning for rural multi-grade schools",
-  manifest: "/manifest.webmanifest",
+  manifest: "/manifest.json",
   icons: {
     icon: "/icon.svg",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#047857",
 };
 
 export default function RootLayout({

@@ -6,7 +6,7 @@ const SHELL_URLS = [
   "/learn/kavya",
   "/learn/rohan",
   "/learn/meera",
-  "/manifest.webmanifest",
+  "/manifest.json",
   "/icon.svg",
 ];
 
